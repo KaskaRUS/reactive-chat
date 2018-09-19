@@ -39,6 +39,10 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+	// exclude Reactor Netty
+	compile.exclude module: 'spring-boot-starter-tomcat'
+}
 
 dependencies {
 	compile('org.springframework.boot:spring-boot-starter-data-mongodb-reactive')
