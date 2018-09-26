@@ -5,15 +5,14 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.web.reactive.socket.WebSocketSession
-import reactor.core.publisher.DirectProcessor
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import reactor.core.publisher.ReplayProcessor
+import reactor.core.publisher.*
 
 
-class ChatSession(val processor: ReplayProcessor<Message>) {
+class ChatSession(private val processor: ReplayProcessor<Message>, private val user: User) {
 
     private val mapper = ObjectMapper().registerModule(KotlinModule())
+    val connectedEvent = MonoProcessor.create<User>()
+    val disconnectEvent = MonoProcessor.create<User>()
 
     private lateinit var session: WebSocketSession
 
@@ -21,9 +20,7 @@ class ChatSession(val processor: ReplayProcessor<Message>) {
         this.session = session
 
         val messages = processor.map { mapper.writeValueAsString(it) }.map { session.textMessage(it) }
-
         val sender = session.send(messages).subscribe()
-
         val mapper = jacksonObjectMapper()
 
         val receiver = session.receive().map { it.payloadAsText }
@@ -34,12 +31,12 @@ class ChatSession(val processor: ReplayProcessor<Message>) {
 
         val connected = Mono
                 .fromRunnable<Any> {
-                    println("run")
+                    connectedEvent.onNext(user)
                 }
 
         val disconnect = Mono
                 .fromRunnable<Any> {
-                    println("disconnect")
+                    disconnectEvent.onNext(user)
                     sender.dispose()
                 }
 
