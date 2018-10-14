@@ -8,13 +8,14 @@ import org.springframework.web.reactive.socket.WebSocketSession
 import reactor.core.publisher.*
 
 
-class ChatSession(private val processor: ReplayProcessor<Message>, private val user: User) {
+class ChatSession(private val processor: ReplayProcessor<Message>) {
 
     private val mapper = ObjectMapper().registerModule(KotlinModule())
     val connectedEvent = MonoProcessor.create<User>()
     val disconnectEvent = MonoProcessor.create<User>()
 
     private lateinit var session: WebSocketSession
+    private lateinit var user: User
 
     fun handle(session: WebSocketSession): Mono<Void> {
         this.session = session
@@ -25,14 +26,21 @@ class ChatSession(private val processor: ReplayProcessor<Message>, private val u
 
         val receiver = session.receive().map { it.payloadAsText }
                 .map { mapper.readValue<Message>(it) }
-                .doOnNext { processor.onNext(it) }
-                .doOnNext { println(it) }
-
-
-        val connected = Mono
-                .fromRunnable<Any> {
-                    connectedEvent.onNext(user)
+                .doOnNext {
+                    if (it.type == TypeMessage.LOGIN) {
+                        val obj = it.data as Map<*, *>
+                        val u = users.find { it.name == obj["name"] && it.password == obj["password"] }
+                        if (u == null)
+                            sender.dispose()
+                        else {
+                            user = u
+                            connectedEvent.onNext(u)
+                        }
+                    } else {
+                        processor.onNext(it)
+                    }
                 }
+                .doOnNext { println(it) }
 
         val disconnect = Mono
                 .fromRunnable<Any> {
@@ -40,6 +48,6 @@ class ChatSession(private val processor: ReplayProcessor<Message>, private val u
                     sender.dispose()
                 }
 
-        return connected.thenMany(receiver).then(disconnect).then()
+        return receiver.then(disconnect).then()
     }
 }

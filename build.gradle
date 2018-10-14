@@ -45,7 +45,6 @@ configurations {
 }
 
 dependencies {
-	compile('org.springframework.boot:spring-boot-starter-data-mongodb-reactive')
 	compile('org.springframework.boot:spring-boot-starter-webflux')
 	compile('org.springframework.boot:spring-boot-starter-websocket')
 	compile('com.fasterxml.jackson.module:jackson-module-kotlin')
