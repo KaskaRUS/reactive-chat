@@ -153,7 +153,13 @@
                 window.socket = new WebSocket("ws://"+document.location.host+"/chat");
 
                 socket.onopen = function() {
+                    const message = {
+                        user: myUser,
+                        data: myUser,
+                        type: "LOGIN"
+                    };
 
+                    socket.send(JSON.stringify(message));
                 };
 
                 socket.onclose = function(event) {
